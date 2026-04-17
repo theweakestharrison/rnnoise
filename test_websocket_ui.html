@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RNNoise WebSocket Tester</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --accent: #00d9ff;
+            --accent-glow: rgba(0, 217, 255, 0.3);
+            --success: #00ff88;
+            --error: #ff4757;
+            --warning: #ffa502;
+            --text: #e8e8e8;
+            --text-muted: #8b8b9e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .connection-section {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.75rem 1rem;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            color: var(--text);
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error), #cc2f3d);
+            color: #fff;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #00cc6a);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--success);
+        }
+
+        .status-connected .status-dot {
+            background: var(--success);
+        }
+
+        .status-disconnected {
+            background: rgba(255, 71, 87, 0.1);
+            color: var(--error);
+        }
+
+        .status-disconnected .status-dot {
+            background: var(--error);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .record-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .record-btn.recording {
+            animation: recording-pulse 1s infinite;
+        }
+
+        @keyframes recording-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); }
+            50% { box-shadow: 0 0 0 20px rgba(255, 71, 87, 0); }
+        }
+
+        .audio-players {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .audio-player-box {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 12px;
+        }
+
+        .audio-player-box h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        audio {
+            width: 100%;
+            height: 40px;
+        }
+
+        .log-container {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 1rem;
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            margin-right: 0.5rem;
+        }
+
+        .log-info { color: var(--accent); }
+        .log-success { color: var(--success); }
+        .log-error { color: var(--error); }
+        .log-warning { color: var(--warning); }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .info-item {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .info-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .file-upload {
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-upload:hover {
+            border-color: var(--accent);
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .file-upload input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ RNNoise WebSocket Tester</h1>
+        <p class="subtitle">Real-time audio denoising test interface</p>
+
+        <!-- Connection -->
+        <div class="card">
+            <div class="card-title">Connection</div>
+            <div class="connection-section">
+                <input type="text" id="wsUrl" value="ws://192.168.1.197:9000" placeholder="WebSocket URL">
+                <button class="btn-primary" id="connectBtn" onclick="toggleConnection()">Connect</button>
+                <div id="statusIndicator" class="status-indicator status-disconnected">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Disconnected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stream Info -->
+        <div class="card" id="infoCard" style="display: none;">
+            <div class="card-title">Stream Info</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-value" id="sampleRate">-</div>
+                    <div class="info-label">Sample Rate (Hz)</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="frameSize">-</div>
+                    <div class="info-label">Frame Size</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="channels">-</div>
+                    <div class="info-label">Channels</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="bitDepth">-</div>
+                    <div class="info-label">Bit Depth</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recording Controls -->
+        <div class="card">
+            <div class="card-title">Audio Recording</div>
+            <div class="controls" style="align-items: center; justify-content: center; flex-direction: column; gap: 1.5rem;">
+                <button class="btn-danger record-btn" id="recordBtn" onclick="toggleRecording()" disabled>
+                    🎤
+                </button>
+                <p id="recordStatus" style="color: var(--text-muted);">Connect to start recording</p>
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div class="card">
+            <div class="card-title">Upload Audio File</div>
+            <label class="file-upload">
+                <input type="file" id="audioFile" accept="audio/*" onchange="handleFileUpload(event)">
+                <p>📁 Click to select or drag and drop an audio file</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">Supports WAV, MP3, and other formats</p>
+            </label>
+        </div>
+
+        <!-- Audio Players -->
+        <div class="card">
+            <div class="card-title">Audio Playback</div>
+            <div class="audio-players">
+                <div class="audio-player-box">
+                    <h3>🔊 Original Audio</h3>
+                    <audio id="originalAudio" controls></audio>
+                </div>
+                <div class="audio-player-box">
+                    <h3>✨ Denoised Audio</h3>
+                    <audio id="denoisedAudio" controls></audio>
+                </div>
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+                <button class="btn-secondary" onclick="clearBuffers()">Clear Buffer</button>
+                <button class="btn-success" onclick="downloadDenoised()" id="downloadBtn" disabled>Download Denoised</button>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="card">
+            <div class="card-title">Logs</div>
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioContext = null;
+        let originalChunks = [];
+        let denoisedChunks = [];
+        let streamInfo = null;
+
+        function log(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-${type}">${message}</span>`;
+            container.insertBefore(entry, container.firstChild);
+        }
+
+        function updateStatus(connected) {
+            isConnected = connected;
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const connectBtn = document.getElementById('connectBtn');
+            const recordBtn = document.getElementById('recordBtn');
+            const recordStatus = document.getElementById('recordStatus');
+            const infoCard = document.getElementById('infoCard');
+
+            if (connected) {
+                indicator.className = 'status-indicator status-connected';
+                statusText.textContent = 'Connected';
+                connectBtn.textContent = 'Disconnect';
+                connectBtn.className = 'btn-danger';
+                recordBtn.disabled = false;
+                recordStatus.textContent = 'Click to start recording';
+                infoCard.style.display = 'block';
+            } else {
+                indicator.className = 'status-indicator status-disconnected';
+                statusText.textContent = 'Disconnected';
+                connectBtn.textContent = 'Connect';
+                connectBtn.className = 'btn-primary';
+                recordBtn.disabled = true;
+                recordStatus.textContent = 'Connect to start recording';
+                infoCard.style.display = 'none';
+            }
+        }
+
+        function toggleConnection() {
+            if (isConnected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            log(`Connecting to ${url}...`);
+
+            try {
+                ws = new WebSocket(url);
+
+                ws.onopen = () => {
+                    log('WebSocket connected!', 'success');
+                    updateStatus(true);
+                    // Request stream info
+                    ws.send(JSON.stringify({ type: 'stream_info' }));
+                };
+
+                ws.onclose = () => {
+                    log('WebSocket disconnected', 'warning');
+                    updateStatus(false);
+                };
+
+                ws.onerror = (error) => {
+                    log(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleMessage(data);
+                    } catch (e) {
+                        log(`Failed to parse message: ${e.message}`, 'error');
+                    }
+                };
+            } catch (e) {
+                log(`Connection failed: ${e.message}`, 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            if (isRecording) {
+                stopRecording();
+            }
+        }
+
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'connected':
+                    log(`Client ID: ${data.client_id}`, 'info');
+                    streamInfo = data;
+                    updateStreamInfo(data);
+                    break;
+                case 'stream_info':
+                    log('Received stream info', 'info');
+                    streamInfo = data;
+                    updateStreamInfo(data);
+                    break;
+                case 'denoised_chunk':
+                    // Decode base64 and store
+                    const bytes = atob(data.data);
+                    const buffer = new ArrayBuffer(bytes.length);
+                    const view = new Uint8Array(buffer);
+                    for (let i = 0; i < bytes.length; i++) {
+                        view[i] = bytes.charCodeAt(i);
+                    }
+                    denoisedChunks.push(new Int16Array(buffer));
+                    log(`Received denoised chunk: ${view.length} bytes`, 'success');
+                    break;
+                case 'buffer_cleared':
+                    log('Buffer cleared', 'info');
+                    break;
+                case 'error':
+                    log(`Server error: ${data.message}`, 'error');
+                    break;
+                default:
+                    log(`Unknown message type: ${data.type}`, 'warning');
+            }
+        }
+
+        function updateStreamInfo(info) {
+            document.getElementById('sampleRate').textContent = info.sample_rate || '-';
+            document.getElementById('frameSize').textContent = info.frame_size || '-';
+            document.getElementById('channels').textContent = info.channels || 1;
+            document.getElementById('bitDepth').textContent = info.bit_depth || 16;
+        }
+
+        async function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 48000,
+                        channelCount: 1,
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    } 
+                });
+
+                audioContext = new AudioContext({ sampleRate: 48000 });
+                const source = audioContext.createMediaStreamSource(stream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                originalChunks = [];
+                denoisedChunks = [];
+
+                processor.onaudioprocess = (e) => {
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    // Convert float32 to int16
+                    const int16Data = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        int16Data[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                    }
+                    
+                    // Store original
+                    originalChunks.push(int16Data.slice());
+                    
+                    // Send to server
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        const base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(int16Data.buffer)));
+                        ws.send(JSON.stringify({
+                            type: 'audio_chunk',
+                            data: base64
+                        }));
+                    }
+                };
+
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                isRecording = true;
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.classList.add('recording');
+                recordBtn.innerHTML = '⏹️';
+                document.getElementById('recordStatus').textContent = 'Recording...';
+                log('Recording started', 'success');
+
+            } catch (e) {
+                log(`Failed to start recording: ${e.message}`, 'error');
+            }
+        }
+
+        function stopRecording() {
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            isRecording = false;
+            const recordBtn = document.getElementById('recordBtn');
+            recordBtn.classList.remove('recording');
+            recordBtn.innerHTML = '🎤';
+            document.getElementById('recordStatus').textContent = 'Click to start recording';
+            log('Recording stopped', 'info');
+
+            // Wait a bit for any remaining chunks, then create audio
+            setTimeout(() => {
+                createAudioBlobs();
+            }, 500);
+        }
+
+        function createAudioBlobs() {
+            // Create original audio
+            if (originalChunks.length > 0) {
+                const originalBlob = createWavBlob(originalChunks, 48000);
+                document.getElementById('originalAudio').src = URL.createObjectURL(originalBlob);
+                log(`Original audio ready: ${originalChunks.length} chunks`, 'success');
+            }
+
+            // Create denoised audio
+            if (denoisedChunks.length > 0) {
+                const denoisedBlob = createWavBlob(denoisedChunks, 48000);
+                document.getElementById('denoisedAudio').src = URL.createObjectURL(denoisedBlob);
+                document.getElementById('downloadBtn').disabled = false;
+                log(`Denoised audio ready: ${denoisedChunks.length} chunks`, 'success');
+            }
+        }
+
+        function createWavBlob(chunks, sampleRate) {
+            // Concatenate all chunks
+            const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+            const combined = new Int16Array(totalLength);
+            let offset = 0;
+            for (const chunk of chunks) {
+                combined.set(chunk, offset);
+                offset += chunk.length;
+            }
+
+            // Create WAV file
+            const wavBuffer = createWavBuffer(combined, sampleRate);
+            return new Blob([wavBuffer], { type: 'audio/wav' });
+        }
+
+        function createWavBuffer(samples, sampleRate) {
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+
+            // WAV header
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+
+            // Audio data
+            const dataOffset = 44;
+            for (let i = 0; i < samples.length; i++) {
+                view.setInt16(dataOffset + i * 2, samples[i], true);
+            }
+
+            return buffer;
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function clearBuffers() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'clear_buffer' }));
+            }
+            originalChunks = [];
+            denoisedChunks = [];
+            document.getElementById('originalAudio').src = '';
+            document.getElementById('denoisedAudio').src = '';
+            document.getElementById('downloadBtn').disabled = true;
+            log('Buffers cleared', 'info');
+        }
+
+        function downloadDenoised() {
+            if (denoisedChunks.length === 0) return;
+            
+            const blob = createWavBlob(denoisedChunks, 48000);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'denoised_audio.wav';
+            a.click();
+            URL.revokeObjectURL(url);
+            log('Denoised audio downloaded', 'success');
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            log(`Loading file: ${file.name}`, 'info');
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const ctx = new AudioContext({ sampleRate: 48000 });
+                const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+                
+                // Get mono channel
+                const channelData = audioBuffer.getChannelData(0);
+                
+                // Convert to int16
+                const int16Data = new Int16Array(channelData.length);
+                for (let i = 0; i < channelData.length; i++) {
+                    int16Data[i] = Math.max(-32768, Math.min(32767, channelData[i] * 32768));
+                }
+
+                // Store as original
+                originalChunks = [int16Data];
+                denoisedChunks = [];
+                
+                // Create original audio blob
+                const originalBlob = createWavBlob(originalChunks, 48000);
+                document.getElementById('originalAudio').src = URL.createObjectURL(originalBlob);
+                
+                log(`File loaded: ${int16Data.length} samples`, 'success');
+
+                // Send to server in chunks
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    const chunkSize = 4096;
+                    for (let i = 0; i < int16Data.length; i += chunkSize) {
+                        const chunk = int16Data.slice(i, i + chunkSize);
+                        const base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(chunk.buffer)));
+                        ws.send(JSON.stringify({
+                            type: 'audio_chunk',
+                            data: base64
+                        }));
+                    }
+                    log(`Sent ${Math.ceil(int16Data.length / chunkSize)} chunks to server`, 'info');
+                    
+                    // Wait for processing
+                    setTimeout(() => {
+                        if (denoisedChunks.length > 0) {
+                            const denoisedBlob = createWavBlob(denoisedChunks, 48000);
+                            document.getElementById('denoisedAudio').src = URL.createObjectURL(denoisedBlob);
+                            document.getElementById('downloadBtn').disabled = false;
+                        }
+                    }, 2000);
+                } else {
+                    log('Not connected to server', 'error');
+                }
+
+                ctx.close();
+            } catch (e) {
+                log(`Failed to load file: ${e.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
