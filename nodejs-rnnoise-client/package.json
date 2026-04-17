@@ -1,0 +1,22 @@
+{
+  "name": "rnnoise-websocket-client",
+  "version": "1.0.0",
+  "description": "Node.js WebSocket client for RNNoise audio denoising",
+  "main": "client.js",
+  "scripts": {
+    "start": "node client.js",
+    "dev": "node client.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "keywords": [
+    "rnnoise",
+    "websocket",
+    "audio",
+    "denoising",
+    "nodejs"
+  ],
+  "author": "",
+  "license": "MIT"
+}
