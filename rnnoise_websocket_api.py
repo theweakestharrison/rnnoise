@@ -436,7 +436,7 @@ def run_websocket_server():
     """Run the WebSocket server"""
     async def serve():
         print("WebSocket server starting on ws://0.0.0.0:8080")
-        async with websockets.serve(handle_websocket, "0.0.0.0", 8082):
+        async with websockets.serve(handle_websocket, "0.0.0.0", 8080):
             await asyncio.Future()  # Run forever
     
     asyncio.run(serve())

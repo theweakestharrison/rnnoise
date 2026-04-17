@@ -14,7 +14,7 @@ import websockets
 import json
 
 # Load the RNNoise wrapper library
-lib_path = "/home/primas/rnnoise/librnnoise_wrapper.so"
+lib_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "librnnoise_wrapper.so")
 if not os.path.exists(lib_path):
     raise RuntimeError(f"RNNoise wrapper library not found at {lib_path}")
 
